@@ -92,6 +92,10 @@ jobs:
     steps:
       - name: Check results
         run: |
+          echo "lint:        ${{ needs.lint.result }}"
+          echo "test:        ${{ needs.test.result }}"
+          echo "integration: ${{ needs.integration.result }}"
+          echo "build:       ${{ needs.build.result }}"
           [ "${{ needs.lint.result }}" = success ] &&
           [ "${{ needs.test.result }}" = success ] &&
           [ "${{ needs.integration.result }}" = success ] &&

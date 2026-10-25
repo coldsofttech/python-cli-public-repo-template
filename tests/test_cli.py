@@ -1,4 +1,5 @@
 import json
+import re
 import sys
 
 import pytest
@@ -9,13 +10,20 @@ from example_cli.cli import app, run
 
 runner = CliRunner()
 
+ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def plain(text: str) -> str:
+    """Remove color codes. Typer's help always colors output on GitHub Actions."""
+    return ANSI.sub("", text)
+
 
 def test_help_lists_commands_and_options() -> None:
     result = runner.invoke(app, ["--help"])
 
     assert result.exit_code == 0
     for text in ("hello", "info", "--version", "--verbose", "--quiet", "--no-color"):
-        assert text in result.output
+        assert text in plain(result.output)
 
 
 def test_version() -> None:
