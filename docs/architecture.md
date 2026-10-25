@@ -29,7 +29,8 @@ flowchart LR
 ## Source layout
 
 ```text
-src/example_package/   typed package (src layout, py.typed)
+src/example_package/   typed library: all the logic, never prints or exits
+src/example_cli/       Typer + Rich command line over the library
 tests/                 pytest unit tests with coverage (80% minimum)
 tests/integration/     tests marked `integration`: skipped by default and in pre-commit, run in CI
 pyproject.toml         metadata, dev dependencies and tool configuration
@@ -37,6 +38,19 @@ uv.lock                locked dependency set, checked by CI with --locked
 ```
 
 The version lives in one place, `__version__` in the package, and Hatchling reads it at build time. The release workflow compares it with the release tag.
+
+## Library and CLI layers
+
+```mermaid
+flowchart LR
+    U[User] --> C[example_cli]
+    C -->|calls| L[example_package]
+    C --> O[Rich consoles]
+```
+
+- `example_cli` parses arguments with Typer, calls `example_package`, and writes all output through the shared Rich consoles: data to stdout, messages and errors to stderr.
+- `example_package` holds the logic. It raises exceptions instead of printing or exiting, so other front ends can reuse it.
+- The console script `example-cli` and `python -m example_cli` both enter through `example_cli.cli:app`. Both packages ship in one wheel and share the version in `example_package.__version__`.
 
 ## Workflows
 

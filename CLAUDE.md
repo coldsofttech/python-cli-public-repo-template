@@ -54,7 +54,19 @@ These apply on top of the rules above.
     `uv run mypy <file>`. Coverage must stay at or above the minimum in `pyproject.toml`. Put slow or end-to-end tests in
     `tests/integration/`; they are excluded from the default run and only run with `-m integration`.
 
-12. **Dependencies and releases**: keep runtime `dependencies` minimal. Don't change the version
+12. **Dependencies and releases**: keep runtime `dependencies` minimal. Typer and Rich are the
+    CLI's accepted dependencies; justify any other new one. Don't change the version
     or publish; releases are cut by the maintainer through a GitHub release.
+
+13. **CLI layering**: `src/example_cli/` only parses input and shows output; business logic belongs
+    in `src/example_package/`, which must never print or exit. Use Typer for commands and the
+    shared Rich consoles in `example_cli/output.py` for all output (data to stdout, messages and
+    errors to stderr), never `print`. Unexpected errors are handled by `run()`: a short message, a traceback only
+    with `--verbose`, and never local variables.
+
+14. **CLI behavior and docs**: every command supports `--help`; global options live in the Typer
+    callback. Test commands with `typer.testing.CliRunner`, and cover installed entry points in
+    `tests/integration/`. Update `docs/cli.md` and regenerate `docs/cli-reference.md` (command in `docs/cli.md`) whenever
+    commands, options or exit codes change.
 
 <!-- markdownlint-enable MD029 -->
