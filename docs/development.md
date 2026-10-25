@@ -3,17 +3,21 @@
 ## Layout
 
 ```text
-src/example_package/   package source (src layout, typed)
+src/example_package/   library: all the logic, never prints or exits (typed)
+src/example_cli/       Typer + Rich command line: parses input, calls the library, shows output
 tests/                 pytest tests
 pyproject.toml         metadata, dependencies and tool configuration
 uv.lock                locked dependencies (commit this file)
 ```
 
-The package is named `example_package`. After creating a repo from this template:
+The example names are `example_package` (library), `example_cli` (command line package) and `example-cli` (the command). After creating a repo from this template:
 
-1. Rename `src/example_package/` to your import name.
-2. Update `[tool.hatch.version]`, `[tool.hatch.build.targets.wheel]` and `--cov=` in `pyproject.toml`, and the import in `tests/`.
-3. Set the description in `pyproject.toml`, then run `uv lock`.
+1. Rename `src/example_package/` and `src/example_cli/` to your import names, and update the imports in `src/` and `tests/`.
+2. In `pyproject.toml`, update `[tool.hatch.version]`, `[tool.hatch.build.targets.wheel]`, the `--cov=` options, and the command in `[project.scripts]`.
+3. Update the command name, the `EXAMPLE_CLI_` environment variable prefix and the help text in `src/example_cli/cli.py`, then in `docs/cli.md` and `README.md`, and regenerate `docs/cli-reference.md` (see [CLI reference](cli.md)).
+4. Set the description in `pyproject.toml`, then run `uv lock`.
+
+Commands, options and exit codes are documented in [CLI reference](cli.md).
 
 ## Tooling
 
