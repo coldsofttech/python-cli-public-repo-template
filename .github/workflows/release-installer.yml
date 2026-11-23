@@ -1,0 +1,105 @@
+name: Release installer
+
+# Tag installer-vX.Y.Z: builds the Windows setup and the command line's portable zip, and its Linux
+# packages (deb and rpm, x86_64 and arm64). Nothing goes to PyPI. Attaching the files to the GitHub
+# release waits for the approval of the `installer` environment. The tag must match the version in
+# installer/build.toml. Called by release.yml.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  installer-check:
+    name: installer check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Check the tag matches the installer version
+        shell: bash
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version="$(python3 -c "import tomllib; print(tomllib.load(open('installer/build.toml','rb'))['version'])")"
+          [ "$TAG" = "installer-v${version}" ] || { echo "Tag $TAG does not match installer-v${version}"; exit 1; }
+
+  installer-windows:
+    name: installer (windows)
+    needs: installer-check
+    runs-on: windows-latest
+    timeout-minutes: 30 # target: under 10 minutes
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Read project names
+        uses: ./.github/actions/project-info
+      - name: Set up uv
+        uses: ./.github/actions/setup-uv
+        with:
+          python-version: "3.15"
+          sync-args: --locked --package example-cli --group installer
+      - name: Install installer tools
+        uses: ./.github/actions/install-installer-tools
+      - name: Build, sign (if SIGN_COMMAND is set) and smoke test the installer
+        env:
+          SIGN_COMMAND: ${{ vars.SIGN_COMMAND }}
+        run: uv run --no-sync python installer/scripts/build.py --smoke
+      - name: Upload the Windows installer
+        uses: actions/upload-artifact@v7
+        with:
+          name: installers-windows
+          path: |
+            dist/installer/*.exe
+            dist/installer/*.zip
+
+  installer-linux:
+    name: installer (linux ${{ matrix.arch }})
+    needs: installer-check
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15 # target: under 5 minutes
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x86_64, runner: ubuntu-latest }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Set up uv
+        uses: ./.github/actions/setup-uv
+        with:
+          python-version: "3.15"
+          sync-args: --locked --package example-cli --group installer
+      - name: Install installer tools
+        uses: ./.github/actions/install-installer-tools
+      - name: Build the packages and smoke test the executable
+        run: uv run --no-sync python installer/scripts/build.py --smoke
+      - name: Upload the Linux packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: installers-cli-linux-${{ matrix.arch }}
+          path: |
+            dist/installer/*.deb
+            dist/installer/*.rpm
+
+  installer-publish:
+    name: installer publish (GitHub release)
+    needs: [installer-windows, installer-linux]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: installer
+    permissions:
+      contents: write # attach files to the release
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Attach the installer to the release
+        uses: ./.github/actions/attach-release-files
+      - name: Update the latest markers
+        uses: ./.github/actions/update-latest
+        with:
+          package: installer

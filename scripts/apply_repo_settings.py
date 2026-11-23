@@ -112,9 +112,14 @@ def main():
     )
 
     # Environments used by release.yml, one per package: only that package's version tags may
-    # deploy to it (core: v*, cli: cli-v*).
+    # deploy to it (core: v*, cli: cli-v*, installer: installer-v*, docker: docker-v*).
     if (Path(__file__).resolve().parent.parent / ".github" / "workflows" / "release.yml").exists():
-        for environment, tag_pattern in (("core", "v*"), ("cli", "cli-v*")):
+        for environment, tag_pattern in (
+            ("core", "v*"),
+            ("cli", "cli-v*"),
+            ("installer", "installer-v*"),
+            ("docker", "docker-v*"),
+        ):
             gh(
                 "api",
                 "-X",

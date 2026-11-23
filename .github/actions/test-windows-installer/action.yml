@@ -1,0 +1,38 @@
+name: Test the Windows installer
+description: Install the built setup.exe for the current user, run the installed command line, then uninstall and check nothing is left behind. Run on Windows, after the installer is built and the project names are read.
+
+runs:
+  using: composite
+  steps:
+    - name: Install, run and uninstall the setup (per user)
+      shell: pwsh
+      run: |
+        $setup = Get-ChildItem "dist/installer/$env:CLI_NAME-*-setup.exe" | Select-Object -First 1
+        $dir = Join-Path $env:RUNNER_TEMP "installed-cli"
+        $userPath = { [Environment]::GetEnvironmentVariable('Path', 'User') }
+        function Run-Setup($file, $arguments) {
+          $process = Start-Process -Wait -PassThru -FilePath $file -ArgumentList $arguments
+          if ($process.ExitCode -ne 0) { throw "$file exited with code $($process.ExitCode)" }
+        }
+        function Check($condition, $message) { if (-not $condition) { throw $message } }
+
+        # Install: the command is there, on PATH, and works.
+        Run-Setup $setup.FullName @('/S', '/currentuser', "/D=$dir")
+        Check (Test-Path "$dir/$env:CLI_NAME.exe") "the command line was not installed"
+        Check ((& $userPath) -like "*$dir*") "the setup did not add itself to PATH"
+        & "$dir/$env:CLI_NAME.exe" --version
+        Check ($LASTEXITCODE -eq 0) "$env:CLI_NAME failed after installing"
+        Check (Test-Path "$dir/uninstall.exe") "no uninstaller"
+
+        # Setting up again replaces the installed version and keeps it working.
+        Run-Setup $setup.FullName @('/S', '/currentuser', '/NOPATH', "/D=$dir")
+        & "$dir/$env:CLI_NAME.exe" --version
+        Check ($LASTEXITCODE -eq 0) "$env:CLI_NAME failed after installing again"
+
+        # Uninstall removes everything. _?= makes the uninstaller run in place, so Start-Process
+        # can wait for it.
+        Run-Setup "$dir/uninstall.exe" @('/S', "_?=$dir")
+        Check (-not (Test-Path "$dir/$env:CLI_NAME.exe")) "uninstall left the command line behind"
+        Check (-not (Test-Path "$dir/lib")) "uninstall left lib behind"
+        Check (-not ((& $userPath) -like "*$dir*")) "uninstall left PATH changed"
+        Remove-Item -Recurse -Force $dir -ErrorAction SilentlyContinue

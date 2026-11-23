@@ -1,6 +1,6 @@
 name: CI repo
 
-# Everything outside packages/: scripts, docs, workflows and the root files. Called by ci.yml.
+# Everything outside packages/: scripts, installer files, docs, workflows and the root files. Called by ci.yml.
 on:
   workflow_call:
 
@@ -18,9 +18,9 @@ jobs:
       - name: Set up uv
         uses: ./.github/actions/setup-uv
       - name: Ruff check
-        run: uv run ruff check scripts
+        run: uv run ruff check scripts installer
       - name: Ruff format
-        run: uv run ruff format --check scripts
+        run: uv run ruff format --check scripts installer
       - name: Run pre-commit hooks
         env:
           SKIP: pytest-core,pytest-cli # covered by the test jobs across all Python versions

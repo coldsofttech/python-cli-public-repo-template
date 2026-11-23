@@ -33,12 +33,15 @@ packages/core/src/example_package/   typed library: all the logic, never prints 
 packages/core/tests/                 core tests with coverage (80% minimum); tests/integration/ is marked `integration`
 packages/cli/src/example_cli/        Typer + Rich command line over the library
 packages/cli/tests/                  command line tests; tests/integration/ is marked `integration`
+packages/docker/                     Dockerfile and docs of the container image (built from core and cli)
+installer/                           Windows setup (NSIS), Linux deb and rpm (nfpm) of the command line, built with PyInstaller
+brand/                               sample icon and setup artwork used by the installers
 packages/*/pyproject.toml            each package's metadata, dependencies and tool configuration
 pyproject.toml                       uv workspace root: dev dependencies and shared tool configuration
 uv.lock                              locked dependency set, checked by CI with --locked
 ```
 
-The repository is a uv workspace of two packages that are built, tested, versioned and released separately: `example-package` (`packages/core`) and `example-cli` (`packages/cli`, which depends on the core). Each version lives in one place, `__version__` in the package, and Hatchling reads it at build time. The release workflow compares it with the release tag.
+The repository is a uv workspace of two Python packages that are built, tested, versioned and released separately: `example-package` (`packages/core`) and `example-cli` (`packages/cli`, which depends on the core). The Docker image (`packages/docker`) and the installers (`installer/`) are released separately too, from the same sources. Each version lives in one place, `__version__` in the package, and Hatchling reads it at build time. The release workflow compares it with the release tag.
 
 ## Library and CLI layers
 
@@ -57,11 +60,11 @@ flowchart LR
 
 | Workflow | Trigger | Purpose |
 | --- | --- | --- |
-| `ci.yml` | Pull request, push to `main` | Calls `ci-core.yml`, `ci-cli.yml` (lint, test, integration test, build) and `ci-repo.yml` (everything outside `packages/`). `changes.yml` limits a pull request to the parts it touches. A final `ci` job gates on all of them and is the only check the ruleset requires. |
-| `security.yml` | Pull request, push to `main`, weekly, manual | Calls `security-core.yml`, `security-cli.yml` and `security-repo.yml`: Semgrep, uploaded to code scanning. Not a required check. |
+| `ci.yml` | Pull request, push to `main` | Calls `ci-core.yml`, `ci-cli.yml` (lint, test, integration test, build), `ci-docker.yml` (builds and checks the image), `ci-installer.yml` (builds, installs and removes the installers, after the cli passed) and `ci-repo.yml` (everything outside `packages/`). `changes.yml` limits a pull request to the parts it touches. A final `ci` job gates on all of them and is the only check the ruleset requires. |
+| `security.yml` | Pull request, push to `main`, weekly, manual | Calls `security-core.yml`, `security-cli.yml`, `security-docker.yml` (Semgrep, Trivy on the Dockerfile and, weekly, on the image) and `security-repo.yml`: Semgrep, uploaded to code scanning. Not a required check. |
 | `dependency-review.yml` | Pull request | Blocks pull requests that add vulnerable dependencies. |
 | `audit.yml` | Weekly, manual, and pull requests that change `uv.lock` | Calls `audit-core.yml`, `audit-cli.yml` and `audit-repo.yml`: `pip-audit` on each package's locked dependencies to catch newly published vulnerabilities. |
-| `release.yml` | GitHub release published | Tag `vX.Y.Z` releases `example-package`, tag `cli-vX.Y.Z` releases `example-cli`: checks the tag matches the version, builds, then publishes to PyPI. |
+| `release.yml` | GitHub release published | Tag `vX.Y.Z` releases `example-package`, `cli-vX.Y.Z` releases `example-cli` (checks the tag matches the version, builds, publishes to PyPI), `installer-vX.Y.Z` attaches the installers to the release and `docker-vX.Y.Z` pushes the image to GHCR. |
 | `init.yml` | Manual | One-time placeholder replacement in a repo created from the template. Skipped in the template itself. |
 
 CodeQL runs through GitHub's default setup rather than a workflow file.

@@ -1,0 +1,29 @@
+name: Test the Linux packages
+description: Install the built deb on the runner and the rpm in a Fedora container, run the command line, then remove them and check nothing is left behind. Run on Linux, after the packages are built and the project names are read.
+
+runs:
+  using: composite
+  steps:
+    - name: Install, run and remove the deb
+      shell: bash
+      run: |
+        sudo apt-get install --yes ./dist/installer/*.deb
+        "$CLI_NAME" --version
+        "$CLI_NAME" hello Ada | grep -q "Hello, Ada!"
+        test -f "/usr/share/icons/hicolor/256x256/apps/$CLI_NAME.png"
+        sudo apt-get remove --yes "$CLI_NAME"
+        hash -r  # the shell remembers where it ran the command from; forget that before checking
+        if command -v "$CLI_NAME"; then echo "$CLI_NAME is still installed"; exit 1; fi
+        if [ -e "/usr/lib/$CLI_NAME" ]; then echo "files were left behind"; exit 1; fi
+        if [ -e "/usr/share/icons/hicolor/256x256/apps/$CLI_NAME.png" ]; then echo "the icon was left behind"; exit 1; fi
+    - name: Install, run and remove the rpm (Fedora)
+      shell: bash
+      run: |
+        docker run --rm --env CLI_NAME --volume "$PWD/dist/installer:/pkgs:ro" fedora:latest bash -euxc '
+          dnf install --assumeyes /pkgs/*.rpm
+          "$CLI_NAME" --version
+          "$CLI_NAME" hello Ada | grep -q "Hello, Ada!"
+          dnf remove --assumeyes "$CLI_NAME"
+          hash -r
+          if command -v "$CLI_NAME"; then echo "$CLI_NAME is still installed"; exit 1; fi
+        '

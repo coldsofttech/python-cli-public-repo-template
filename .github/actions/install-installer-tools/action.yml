@@ -1,0 +1,30 @@
+name: Install installer tools
+description: Install NSIS on Windows or nfpm on Linux, at the versions pinned in installer/tools.toml. Run after checkout.
+
+runs:
+  using: composite
+  steps:
+    - name: Read tool versions
+      id: tools
+      shell: bash
+      run: |
+        python3 -c "import tomllib, os; t = tomllib.load(open('installer/tools.toml', 'rb'))['tools']; open(os.environ['GITHUB_OUTPUT'], 'a').write(''.join(f'{k}={v}\n' for k, v in t.items()))" ||
+        python -c "import tomllib, os; t = tomllib.load(open('installer/tools.toml', 'rb'))['tools']; open(os.environ['GITHUB_OUTPUT'], 'a').write(''.join(f'{k}={v}\n' for k, v in t.items()))"
+    - name: Install NSIS
+      if: runner.os == 'Windows'
+      shell: bash
+      run: choco install nsis --version "${{ steps.tools.outputs.nsis }}" --yes --no-progress
+    - name: Install nfpm (checksum verified)
+      if: runner.os == 'Linux'
+      shell: bash
+      env:
+        VERSION: ${{ steps.tools.outputs.nfpm }}
+        ARCH: ${{ runner.arch == 'ARM64' && 'arm64' || 'x86_64' }}
+      run: |
+        base="https://github.com/goreleaser/nfpm/releases/download/v${VERSION}"
+        curl -fsSLO "${base}/nfpm_${VERSION}_Linux_${ARCH}.tar.gz"
+        curl -fsSLO "${base}/checksums.txt"
+        sha256sum --ignore-missing --check checksums.txt
+        tar -xzf "nfpm_${VERSION}_Linux_${ARCH}.tar.gz" nfpm
+        sudo install nfpm /usr/local/bin/nfpm
+        nfpm --version

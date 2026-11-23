@@ -1,0 +1,10 @@
+# Only the two packages the image installs are needed; keep everything else out of the build context.
+*
+!packages/core/**
+!packages/cli/**
+**/__pycache__
+**/*.pyc
+**/dist
+**/tests
+**/docs
+**/.venv

@@ -1,6 +1,6 @@
 name: Security repo
 
-# Everything outside packages/: scripts, docs and the GitHub Actions workflows. Static
+# Everything outside packages/: scripts, installer files and the GitHub Actions workflows. Static
 # analysis (Semgrep). Called by security.yml.
 on:
   workflow_call:

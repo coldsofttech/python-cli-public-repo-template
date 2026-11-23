@@ -8,7 +8,7 @@ description: >-
 
 inputs:
   package:
-    description: Which package was released (core or cli).
+    description: Which package was released (core, cli, installer or docker).
     required: true
 
 runs:
@@ -21,7 +21,7 @@ runs:
         PRERELEASE: ${{ github.event.release.prerelease }}
       run: |
         [ "$PRERELEASE" = "true" ] && { echo "Pre-release: nothing to update."; exit 0; }
-        # Core owns the badge. Tags are vX.Y.Z; the cli package uses a prefix (cli-v)
+        # Core owns the badge. Tags are vX.Y.Z; the other packages use a prefix (cli-v, installer-v, docker-v)
         # and the pointers use <package>-latest, so only core tags match ^v[0-9].
         core="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 200 --exclude-drafts --exclude-pre-releases \
           --json tagName --jq '.[].tagName' | grep -E '^v[0-9]' | sort -V | tail -n 1 || true)"

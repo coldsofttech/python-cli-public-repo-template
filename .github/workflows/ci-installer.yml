@@ -1,0 +1,73 @@
+name: CI Installer
+
+# The installers of the command line. Builds the Windows setup and zip, and the deb and rpm
+# packages on Linux, then installs and removes them. Called by ci.yml once the cli checks have
+# passed.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  installer-windows:
+    name: installer (windows)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Read project names
+        uses: ./.github/actions/project-info
+      - name: Set up uv
+        uses: ./.github/actions/setup-uv
+        with:
+          python-version: "3.15"
+          sync-args: --locked --package example-cli --group installer
+      - name: Install installer tools
+        uses: ./.github/actions/install-installer-tools
+      - name: Build the installer and smoke test the executable
+        run: uv run --no-sync python installer/scripts/build.py --smoke
+      - name: Test the Windows setup
+        uses: ./.github/actions/test-windows-installer
+      - name: Upload the installers
+        uses: actions/upload-artifact@v7
+        with:
+          name: installers-windows
+          path: |
+            dist/installer/*.exe
+            dist/installer/*.zip
+          retention-days: 7
+          if-no-files-found: error
+
+  # Builds the deb and rpm packages (x86_64), starts the frozen program, then installs, runs and
+  # removes the result.
+  installer-linux:
+    name: installer (linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Read project names
+        uses: ./.github/actions/project-info
+      - name: Set up uv
+        uses: ./.github/actions/setup-uv
+        with:
+          python-version: "3.15"
+          sync-args: --locked --package example-cli --group installer
+      - name: Install installer tools
+        uses: ./.github/actions/install-installer-tools
+      - name: Build the installer and smoke test the executable
+        run: uv run --no-sync python installer/scripts/build.py --smoke
+      - name: Test the Linux packages
+        uses: ./.github/actions/test-linux-packages
+      - name: Upload the installers
+        uses: actions/upload-artifact@v7
+        with:
+          name: installers-linux
+          path: |
+            dist/installer/*.deb
+            dist/installer/*.rpm
+          retention-days: 7
+          if-no-files-found: error

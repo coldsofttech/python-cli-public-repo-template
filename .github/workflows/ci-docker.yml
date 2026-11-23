@@ -1,0 +1,47 @@
+name: CI Docker
+
+# packages/docker: builds the command line image (packages/docker/Dockerfile) for linux/amd64 and
+# checks it runs as an unprivileged user. Nothing is published; release-docker.yml pushes the image
+# to GHCR for a docker-vX.Y.Z release. See packages/docker/docs/docker.md. Called by ci.yml.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  docker-smoke:
+    name: docker build and check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+      - name: Build the image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: packages/docker/Dockerfile
+          load: true
+          tags: example-cli:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Check it runs, as a normal user, with its folder in place
+        run: |
+          set -euxo pipefail
+          docker run --rm example-cli:test --version
+          docker run --rm example-cli:test hello Ada | grep -q 'Hello, Ada!'
+          test "$(docker run --rm --entrypoint id example-cli:test -u)" != 0
+          docker run --rm --entrypoint sh example-cli:test -c 'touch /output/x'
+          # A failure is reported with exit code 1 and a message on stderr, not a traceback.
+          set +e
+          docker run --rm example-cli:test hello ' ' 2> err.txt
+          code=$?
+          set -e
+          test "$code" = 1
+          grep -q 'must not be empty' err.txt
+          ! grep -q Traceback err.txt
+      - name: Image size
+        run: docker image ls example-cli:test --format '{{.Size}}'

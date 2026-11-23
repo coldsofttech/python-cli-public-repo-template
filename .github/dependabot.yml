@@ -27,3 +27,16 @@ updates:
     groups:
       python:
         patterns: ["*"]
+
+  # The base image of the Docker image (FROM lines in packages/docker/Dockerfile).
+  - package-ecosystem: docker
+    directory: /packages/docker
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      docker:
+        patterns: ["*"]

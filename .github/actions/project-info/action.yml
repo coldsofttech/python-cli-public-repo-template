@@ -1,0 +1,9 @@
+name: Read project names
+description: Export the project names (CLI_NAME, CLI_PACKAGE, CORE_PACKAGE, ...) to the job environment, read from the packages' pyproject.toml by installer/scripts/build.py.
+
+runs:
+  using: composite
+  steps:
+    - name: Read project names
+      shell: bash
+      run: python3 installer/scripts/build.py --github-env || python installer/scripts/build.py --github-env

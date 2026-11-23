@@ -24,8 +24,8 @@ runs:
         sync: "false"
     # Actions are pinned to version tags on purpose (Dependabot keeps them current), so the
     # rule that asks for commit SHAs is excluded. The rule about environment values reaching
-    # subprocess is excluded too: scripts/ call the trusted gh CLI with values the maintainer
-    # passes on purpose.
+    # subprocess is excluded too: scripts/ and installer/scripts/ call trusted tools (gh, nfpm,
+    # makensis; SIGN_COMMAND is build configuration that whoever runs the build sets on purpose).
     - name: Run Semgrep
       shell: bash
       env:

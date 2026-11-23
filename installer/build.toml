@@ -1,0 +1,63 @@
+# The Windows setup (example-cli-<version>-setup.exe) and the Linux packages: what is not read from
+# the package itself. Read by installer/scripts/build.py.
+
+name = "example-cli"                              # file name stem of the setup and zip, and the PyInstaller folder
+version = "0.1.0"                                 # of the setup itself, see CHANGELOG.md
+title = "Example CLI"                             # Apps & features name
+publisher = "coldsofttech"
+install-dir = "coldsofttech/Example CLI"          # folder under Program Files, "/" between parts
+# Start Menu folder, "/" between parts: the shortcuts and Uninstall go here. Keep it to one part:
+# Windows 11 lists only the top folder and flattens any folder inside it.
+start-menu-dir = "Example CLI"
+# Stable id of the product: keep it for the life of the project, so a newer setup replaces an
+# older install. To make a new one: python -c "import uuid; print(uuid.uuid4())"
+guid = "{7422A221-7BB3-4E3F-B62A-28A476A4E8FE}"
+
+# Shown in the setup (Apps & features), the packages and the file properties.
+[licence]
+file = "LICENSE"                 # from the repository root, shown by the setup
+name = "MIT License"             # in the executable's file properties
+
+[links]
+homepage = "https://github.com/coldsofttech/python-cli-public-repo-template"
+issues = "https://github.com/coldsofttech/python-cli-public-repo-template/issues"
+changelog = "https://github.com/coldsofttech/python-cli-public-repo-template/blob/main/CHANGELOG.md"
+
+# Artwork, as paths from the repository root. icon and png-dir are required; the setup bitmaps are
+# optional (NSIS uses its own artwork when they are left out). See brand/README.md.
+[brand]
+icon = "brand/light/app.ico"                   # executable, setup and uninstaller (16 to 256 px)
+png-dir = "brand/light/png"                    # app-16.png ... app-256.png, for the Linux packages
+header-image = "brand/dark/nsis/header.bmp"    # setup header, 24-bit BMP, 150x57
+welcome-image = "brand/dark/nsis/welcome.bmp"  # setup welcome and finish pages, 24-bit BMP, 164x314
+
+# The files the build runs.
+[build]
+spec = "installer/pyinstaller/cli.spec"  # PyInstaller: freezes the command line into one folder
+nsi = "installer/windows/setup.nsi"      # NSIS: the Windows setup and uninstaller
+nfpm = "installer/linux/nfpm.yaml"       # nfpm: the Linux deb and rpm
+# pytest options of --smoke, before the command line's smoke test
+smoke-args = ["-m", "integration", "--no-cov", "-p", "no:cacheprovider"]
+
+# What each OS builds (--format picks some of them): exe is the Windows setup and the portable zip.
+[formats]
+windows = ["exe"]
+linux = ["deb", "rpm"]
+
+# The program in the setup. The executable and its entry point come from the package's
+# pyproject.toml ([project.scripts]). Here: where the package is, its title and version, what its
+# build leaves out, the packages collected whole (code, data files, native libraries and
+# submodules, because static analysis misses what they load by name) and its smoke test.
+[cli]
+path = "packages/cli"
+title = "Example CLI"                      # file properties of the executable
+# The version is kept in the code; a literal or "pyproject" (the [project] version) also work.
+version = { file = "src/example_cli/__init__.py", pattern = '^__version__\s*=\s*"([^"]+)"' }
+core-package = "example_package"           # the library the command line is built on
+smoke = "tests/integration/test_frozen_cli.py"  # run from path by --smoke: starts the built program
+excludes = ["tkinter", "pytest"]
+# rich lazily imports a Unicode-version-specific submodule that static analysis cannot see.
+collect = ["rich", "typer"]
+# Folders under lib/ whose .py files are shipped as compiled .pyc instead (smaller, and the
+# source is not shipped). Only for libraries that do not read their own source at run time.
+compile-pyc = ["rich", "typer"]

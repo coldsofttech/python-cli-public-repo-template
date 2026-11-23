@@ -4,7 +4,9 @@ name: Changes
 # run the workflows that can be affected. Anything that is not a pull request (a push to main, the
 # weekly run, a manual run) reports every part as changed. Called by ci.yml and security.yml.
 #
-# Dependencies: cli uses core. A change under .github runs everything.
+# Dependencies: cli uses core; the Docker image holds core and cli; the installers are built from
+# the cli, so a change that reaches the installers also runs the cli jobs. A change under .github
+# runs everything.
 on:
   workflow_call:
     outputs:
@@ -12,6 +14,10 @@ on:
         value: ${{ jobs.changes.outputs.core }}
       cli:
         value: ${{ jobs.changes.outputs.cli }}
+      docker:
+        value: ${{ jobs.changes.outputs.docker }}
+      installer:
+        value: ${{ jobs.changes.outputs.installer }}
       repo:
         value: ${{ jobs.changes.outputs.repo }}
 
@@ -28,7 +34,9 @@ jobs:
       pull-requests: read
     outputs:
       core: ${{ github.event_name != 'pull_request' || steps.filter.outputs.core == 'true' }}
-      cli: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cli == 'true' }}
+      cli: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cli == 'true' || steps.filter.outputs.installer_files == 'true' }}
+      docker: ${{ github.event_name != 'pull_request' || steps.filter.outputs.docker == 'true' }}
+      installer: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cli == 'true' || steps.filter.outputs.installer_files == 'true' }}
       repo: ${{ github.event_name != 'pull_request' || steps.filter.outputs.repo == 'true' }}
     steps:
       - name: Find the changed paths
@@ -49,8 +57,19 @@ jobs:
             cli:
               - *core
               - 'packages/cli/**'
+            docker:
+              - *workflows
+              - 'packages/core/**'
+              - 'packages/cli/**'
+              - 'packages/docker/**'
+            installer_files:
+              - *workflows
+              - 'installer/**'
+              - 'brand/**'
             repo:
               - *workflows
               - '*'
               - 'scripts/**'
               - 'docs/**'
+              - 'installer/**'
+              - 'brand/**'
