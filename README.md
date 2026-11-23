@@ -65,7 +65,7 @@ $ example-cli hello Ada
 Hello, Ada!
 ```
 
-See the [CLI reference](docs/cli.md) for every command, option and exit code.
+See the [CLI guide](packages/cli/docs/guides/cli.md) for every command, option and exit code.
 
 > After renaming the command, update the examples above. Once you have written your tool's real commands, replace this example with a short walkthrough of them.
 

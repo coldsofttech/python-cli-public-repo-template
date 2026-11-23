@@ -6,4 +6,4 @@ Command line for the example project, built on [Typer](https://typer.tiangolo.co
 uvx --from example-cli example-cli --help
 ```
 
-Rename it to your CLI's name. See the [CLI reference](../../docs/cli.md).
+Rename it to your CLI's name. See the [CLI guide](docs/guides/cli.md).

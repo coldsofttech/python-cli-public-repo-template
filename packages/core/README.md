@@ -8,4 +8,4 @@ from example_package import greet
 greet("Ada")  # "Hello, Ada!"
 ```
 
-Rename it to your project's import name. See the [development guide](../../docs/development.md).
+Rename it to your project's import name. See the [development guide](docs/development.md).

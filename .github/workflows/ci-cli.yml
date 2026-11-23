@@ -23,8 +23,8 @@ jobs:
           path: packages/cli
       - name: Check the generated CLI reference is up to date
         run: |
-          uv run typer example_cli.cli utils docs --name example-cli --output docs/cli-reference.md
-          git diff --exit-code docs/cli-reference.md
+          uv run typer example_cli.cli utils docs --name example-cli --output packages/cli/docs/cli-reference.md
+          git diff --exit-code packages/cli/docs/cli-reference.md
 
   cli-test:
     name: cli test (${{ matrix.os }}, ${{ matrix.python-version }})

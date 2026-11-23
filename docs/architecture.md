@@ -1,6 +1,6 @@
 # Architecture
 
-How the pieces of this template fit together. For day-to-day commands, see [development](development.md). For one-time repository settings, see [repository setup](repo-setup.md).
+How the pieces of this template fit together. For day-to-day commands, see [development](development.md). For one-time repository settings, see [repository setup](repo-setup.md). Each package documents its own design: [core](../packages/core/docs/architecture.md), [command line](../packages/cli/docs/architecture.md), [Docker image](../packages/docker/docs/docker.md) and [installers](../installer/docs/packaging.md). How a release is routed is in [releasing](releasing.md), and the protections are in [security](security.md).
 
 ## Overview
 
@@ -81,6 +81,8 @@ The `main` ruleset in `.github/rulesets/main.json` is applied by `scripts/apply_
 Repository admins can bypass through a pull request so a solo maintainer is not locked out.
 
 ## Release flow
+
+The full routing of tags to packages is in [releasing](releasing.md).
 
 1. Bump `__version__` and update the package's `CHANGELOG.md` in a pull request.
 2. After merge, publish a GitHub release tagged `v<version>` (core) or `cli-v<version>` (command line). Release the core first, because the command line depends on it.

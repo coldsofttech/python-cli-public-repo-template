@@ -1,5 +1,7 @@
 # Development
 
+Repository-wide tooling and workflow. Each package has its own guide with the commands for that package: [core](../packages/core/docs/development.md) and [command line](../packages/cli/docs/development.md).
+
 ## Layout
 
 ```text
@@ -18,10 +20,10 @@ The example names are `example_package` (library), `example_cli` (command line p
 
 1. Rename `packages/core/src/example_package/` and `packages/cli/src/example_cli/` to your import names, and update the imports in both packages' `src/` and `tests/`.
 2. Rename the distributions `example-package` and `example-cli` everywhere they appear (the root and both `pyproject.toml` files, `.github/actions/run-pytest`, `audit-*`, `release-*` and `ci-*` workflows), and in each package's `pyproject.toml` update `[tool.hatch.version]`, `[tool.hatch.build.targets.wheel]`, the `--cov=` options, `known-first-party` and the command in `[project.scripts]`.
-3. Update the command name, the `EXAMPLE_CLI_` environment variable prefix and the help text in `packages/cli/src/example_cli/cli.py`, then in `docs/cli.md` and `README.md`, and regenerate `docs/cli-reference.md` (see [CLI reference](cli.md)).
+3. Update the command name, the `EXAMPLE_CLI_` environment variable prefix and the help text in `packages/cli/src/example_cli/cli.py`, then in `packages/cli/docs/guides/cli.md` and `README.md`, and regenerate `packages/cli/docs/cli-reference.md` (see the [command line guide](../packages/cli/docs/guides/cli.md)).
 4. Set the descriptions in both packages' `pyproject.toml`, then run `uv lock`.
 
-Commands, options and exit codes are documented in [CLI reference](cli.md).
+Commands, options and exit codes are documented in the [command line guide](../packages/cli/docs/guides/cli.md).
 
 ## Tooling
 
@@ -54,7 +56,9 @@ The `ci` workflow calls one workflow per package (`ci-core`, `ci-cli`) and one f
 
 The container image is described in [`packages/docker/docs`](../packages/docker/docs/docker.md) and the installers in [`installer/docs/packaging.md`](../installer/docs/packaging.md). When you rename the command, also update `installer/build.toml` (names, the install folder and a new `guid`), `packages/docker/Dockerfile` (user, entry point, labels) and the image name in `.github/workflows/ci-docker.yml`. Replace the sample artwork in `brand/` (see [`brand/README.md`](../brand/README.md)). Build the Linux packages locally with `uv sync --group installer` and `uv run python installer/scripts/build.py --smoke`.
 
-## Releasing to PyPI
+## Releasing
+
+The routing of tags to packages is in [releasing](releasing.md); the steps for each package are in its packaging notes. In short, for PyPI:
 
 Publishing uses [trusted publishing](https://docs.pypi.org/trusted-publishers/), so no API token is stored.
 
