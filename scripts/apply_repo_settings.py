@@ -111,39 +111,41 @@ def main():
         capture_output=True,
     )
 
-    # "pypi" environment used by release.yml: only version tags may deploy to it.
+    # Environments used by release.yml, one per package: only that package's version tags may
+    # deploy to it (core: v*, cli: cli-v*).
     if (Path(__file__).resolve().parent.parent / ".github" / "workflows" / "release.yml").exists():
-        gh(
-            "api",
-            "-X",
-            "PUT",
-            f"repos/{repo}/environments/pypi",
-            "--input",
-            "-",
-            payload={
-                "deployment_branch_policy": {
-                    "protected_branches": False,
-                    "custom_branch_policies": True,
-                }
-            },
-        )
-        policies = gh(
-            "api",
-            f"repos/{repo}/environments/pypi/deployment-branch-policies",
-            "-q",
-            ".branch_policies[].name",
-        ).splitlines()
-        if "v*" not in policies:
+        for environment, tag_pattern in (("core", "v*"), ("cli", "cli-v*")):
             gh(
                 "api",
                 "-X",
-                "POST",
-                f"repos/{repo}/environments/pypi/deployment-branch-policies",
-                "-f",
-                "name=v*",
-                "-f",
-                "type=tag",
+                "PUT",
+                f"repos/{repo}/environments/{environment}",
+                "--input",
+                "-",
+                payload={
+                    "deployment_branch_policy": {
+                        "protected_branches": False,
+                        "custom_branch_policies": True,
+                    }
+                },
             )
+            policies = gh(
+                "api",
+                f"repos/{repo}/environments/{environment}/deployment-branch-policies",
+                "-q",
+                ".branch_policies[].name",
+            ).splitlines()
+            if tag_pattern not in policies:
+                gh(
+                    "api",
+                    "-X",
+                    "POST",
+                    f"repos/{repo}/environments/{environment}/deployment-branch-policies",
+                    "-f",
+                    f"name={tag_pattern}",
+                    "-f",
+                    "type=tag",
+                )
 
     # Ruleset (skips creation if one named "main" already exists).
     names = gh("api", f"repos/{repo}/rulesets", "-q", ".[].name").splitlines()

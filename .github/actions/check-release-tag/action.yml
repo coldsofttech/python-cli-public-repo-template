@@ -1,0 +1,29 @@
+name: Check the release tag
+description: Fail unless the release tag is the prefix plus the package's version. Run after checkout.
+
+inputs:
+  package:
+    description: Distribution name of the package, for example example-cli.
+    required: true
+  prefix:
+    description: Tag prefix before the version, for example cli-v.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Set up uv
+      uses: ./.github/actions/setup-uv
+      with:
+        sync: "false"
+    - name: Check the tag matches the package version
+      shell: bash
+      env:
+        TAG: ${{ github.event.release.tag_name }}
+        PACKAGE: ${{ inputs.package }}
+        PREFIX: ${{ inputs.prefix }}
+      run: |
+        # uv cannot read a dynamic version, so fall back to the installed package's metadata
+        version="$(uv version --package "$PACKAGE" --short 2>/dev/null)" || \
+          version="$(uv run --package "$PACKAGE" --no-dev python -c 'import importlib.metadata as m, sys; print(m.version(sys.argv[1]))' "$PACKAGE")"
+        [ "$TAG" = "${PREFIX}${version}" ] || { echo "Tag $TAG does not match $PACKAGE ${PREFIX}${version}"; exit 1; }

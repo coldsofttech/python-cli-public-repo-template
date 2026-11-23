@@ -1,0 +1,34 @@
+name: Run pytest for a package
+description: Set up uv with the locked dependencies and run one package's tests. Run after checkout.
+
+inputs:
+  package:
+    description: Package folder name under packages/ (core, cli).
+    required: true
+  python-version:
+    description: Python version.
+    required: true
+  integration:
+    description: Run the integration tests instead of the unit tests ("true" or "false").
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up uv
+      uses: ./.github/actions/setup-uv
+      with:
+        python-version: ${{ inputs.python-version }}
+        sync-args: --locked --package ${{ inputs.package == 'core' && 'example-package' || format('example-{0}', inputs.package) }}
+    - name: Run unit tests
+      if: inputs.integration != 'true'
+      shell: bash
+      env:
+        PACKAGE: ${{ inputs.package }}
+      run: uv run --no-sync pytest "packages/$PACKAGE/tests" --no-cov
+    - name: Run integration tests
+      if: inputs.integration == 'true'
+      shell: bash
+      env:
+        PACKAGE: ${{ inputs.package }}
+      run: uv run --no-sync pytest -m integration "packages/$PACKAGE/tests" --no-cov

@@ -1,0 +1,60 @@
+name: Semgrep scan
+description: Scan one folder with Semgrep and upload the findings as SARIF to code scanning. Run after checkout.
+
+inputs:
+  path:
+    description: Folder to scan.
+    default: "."
+  configs:
+    description: Space-separated Semgrep rule sets, for example "p/python p/owasp-top-ten".
+    required: true
+  exclude:
+    description: Space-separated extra paths to leave out.
+    default: ""
+  category:
+    description: SARIF category, so each scan keeps its own results in the Security tab.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Set up uv
+      uses: ./.github/actions/setup-uv
+      with:
+        sync: "false"
+    # Actions are pinned to version tags on purpose (Dependabot keeps them current), so the
+    # rule that asks for commit SHAs is excluded. The rule about environment values reaching
+    # subprocess is excluded too: scripts/ call the trusted gh CLI with values the maintainer
+    # passes on purpose.
+    - name: Run Semgrep
+      shell: bash
+      env:
+        SEMGREP_PATH: ${{ inputs.path }}
+        SEMGREP_CONFIGS: ${{ inputs.configs }}
+        SEMGREP_EXCLUDE: ${{ inputs.exclude }}
+      run: |
+        args=()
+        for config in $SEMGREP_CONFIGS; do args+=(--config "$config"); done
+        for path in $SEMGREP_EXCLUDE; do args+=(--exclude "$path"); done
+        uvx semgrep scan "${args[@]}" \
+          --exclude tests \
+          --exclude node_modules \
+          --exclude-rule yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag \
+          --exclude-rule python.lang.security.audit.dangerous-subprocess-use-tainted-env-args.dangerous-subprocess-use-tainted-env-args \
+          --error \
+          --sarif --output semgrep.sarif \
+          "$SEMGREP_PATH"
+    # Findings silenced in the source with `nosemgrep` are still written to the report, marked as
+    # suppressed, and code scanning would show them as open alerts. Leave them out.
+    - name: Drop the findings suppressed in the source
+      if: always() && hashFiles('semgrep.sarif') != ''
+      shell: bash
+      run: |
+        jq '.runs[].results |= map(select((.suppressions // []) | length == 0))' semgrep.sarif > semgrep.filtered.sarif
+        mv semgrep.filtered.sarif semgrep.sarif
+    - name: Upload results
+      if: always() && hashFiles('semgrep.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+      uses: github/codeql-action/upload-sarif@v4
+      with:
+        sarif_file: semgrep.sarif
+        category: ${{ inputs.category }}

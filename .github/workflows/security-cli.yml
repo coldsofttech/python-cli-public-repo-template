@@ -1,0 +1,27 @@
+name: Security CLI
+
+# packages/cli: static analysis (Semgrep). Called by security.yml.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  cli-semgrep:
+    name: cli semgrep
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Semgrep
+        uses: ./.github/actions/semgrep
+        with:
+          path: packages/cli
+          configs: p/python p/owasp-top-ten
+          category: semgrep-cli

@@ -1,0 +1,27 @@
+name: Audit Python dependencies
+description: Export locked dependencies and check them for known vulnerabilities. Run after checkout.
+
+inputs:
+  package:
+    description: Distribution name of one package, for example example-cli. Empty audits the workspace root.
+    default: ""
+  extra-args:
+    description: Extra arguments for `uv export`, for example --all-groups.
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Set up uv
+      uses: ./.github/actions/setup-uv
+      with:
+        sync: "false"
+    - name: Export locked dependencies
+      shell: bash
+      env:
+        PACKAGE_ARGS: ${{ inputs.package != '' && format('--package {0}', inputs.package) || '' }}
+        EXTRA_ARGS: ${{ inputs.extra-args }}
+      run: uv export --locked $PACKAGE_ARGS $EXTRA_ARGS --no-emit-workspace --no-hashes --format requirements-txt -o requirements-audit.txt
+    - name: Audit
+      shell: bash
+      run: uvx pip-audit --requirement requirements-audit.txt --no-deps --disable-pip

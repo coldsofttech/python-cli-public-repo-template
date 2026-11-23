@@ -1,0 +1,56 @@
+name: Changes
+
+# Tells ci.yml and security.yml which parts of the repository a pull request touches, so they only
+# run the workflows that can be affected. Anything that is not a pull request (a push to main, the
+# weekly run, a manual run) reports every part as changed. Called by ci.yml and security.yml.
+#
+# Dependencies: cli uses core. A change under .github runs everything.
+on:
+  workflow_call:
+    outputs:
+      core:
+        value: ${{ jobs.changes.outputs.core }}
+      cli:
+        value: ${{ jobs.changes.outputs.cli }}
+      repo:
+        value: ${{ jobs.changes.outputs.repo }}
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: detect changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      core: ${{ github.event_name != 'pull_request' || steps.filter.outputs.core == 'true' }}
+      cli: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cli == 'true' }}
+      repo: ${{ github.event_name != 'pull_request' || steps.filter.outputs.repo == 'true' }}
+    steps:
+      - name: Find the changed paths
+        id: filter
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            workflows: &workflows
+              - '.github/**'
+            python: &python
+              - *workflows
+              - 'pyproject.toml'
+              - 'uv.lock'
+            core: &core
+              - *python
+              - 'packages/core/**'
+            cli:
+              - *core
+              - 'packages/cli/**'
+            repo:
+              - *workflows
+              - '*'
+              - 'scripts/**'
+              - 'docs/**'

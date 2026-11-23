@@ -1,0 +1,28 @@
+name: Security repo
+
+# Everything outside packages/: scripts, docs and the GitHub Actions workflows. Static
+# analysis (Semgrep). Called by security.yml.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  repo-semgrep:
+    name: repo semgrep
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Semgrep
+        uses: ./.github/actions/semgrep
+        with:
+          configs: p/python p/owasp-top-ten p/github-actions
+          exclude: packages
+          category: semgrep-repo

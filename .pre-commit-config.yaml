@@ -35,23 +35,59 @@ repos:
     rev: v0.17.2
     hooks:
       - id: ruff-check
+        alias: ruff-check-core
+        name: ruff check (core)
         args: [--fix]
+        files: ^packages/core/
       - id: ruff-format
+        alias: ruff-format-core
+        name: ruff format (core)
+        files: ^packages/core/
+      - id: ruff-check
+        alias: ruff-check-cli
+        name: ruff check (cli)
+        args: [--fix]
+        files: ^packages/cli/
+      - id: ruff-format
+        alias: ruff-format-cli
+        name: ruff format (cli)
+        files: ^packages/cli/
+      - id: ruff-check
+        alias: ruff-check-repo
+        name: ruff check (repo)
+        args: [--fix]
+        files: ^(?!packages/)
+      - id: ruff-format
+        alias: ruff-format-repo
+        name: ruff format (repo)
+        files: ^(?!packages/)
   - repo: https://github.com/astral-sh/uv-pre-commit
     rev: 0.13.5
     hooks:
       - id: uv-lock
   - repo: local
     hooks:
-      - id: mypy
-        name: mypy
-        entry: uv run mypy
+      - id: mypy-core
+        name: mypy (core)
+        entry: uv run mypy packages/core/src
         language: system
-        types: [python]
+        files: ^packages/core/.*\.py$
         pass_filenames: false
-      - id: pytest
-        name: pytest
-        entry: uv run pytest -n auto
+      - id: mypy-cli
+        name: mypy (cli)
+        entry: uv run mypy packages/cli/src
         language: system
-        types: [python]
+        files: ^packages/cli/.*\.py$
+        pass_filenames: false
+      - id: pytest-core
+        name: pytest (core)
+        entry: uv run pytest -c packages/core/pyproject.toml packages/core/tests -n auto
+        language: system
+        files: ^packages/core/.*\.py$
+        pass_filenames: false
+      - id: pytest-cli
+        name: pytest (cli)
+        entry: uv run pytest -c packages/cli/pyproject.toml packages/cli/tests -n auto
+        language: system
+        files: ^packages/cli/.*\.py$
         pass_filenames: false

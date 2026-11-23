@@ -22,22 +22,23 @@ flowchart LR
 | Layer | What runs | Where |
 | --- | --- | --- |
 | Local | gitleaks, file hygiene, markdownlint, Ruff, `uv lock` check, mypy, Sweepito scan and cleanup | pre-commit hooks |
-| Pull request | `ci` (lint, unit and integration tests on Python 3.11 to 3.15 on Ubuntu plus 3.11 on Windows and macOS, build), dependency review, CodeQL | GitHub Actions |
+| Pull request | `ci` (per package: lint, unit and integration tests on Python 3.11 to 3.15 on Ubuntu plus 3.11 on Windows and macOS, build), dependency review, Semgrep, CodeQL | GitHub Actions |
 | Repository | Branch ruleset, secret scanning with push protection, Dependabot alerts and updates | GitHub settings |
-| Release | Version check, build, trusted publish to PyPI | `release.yml` |
+| Release | Tag and version check, build, trusted publish to PyPI, per package | `release.yml` |
 
 ## Source layout
 
 ```text
-src/example_package/   typed library: all the logic, never prints or exits
-src/example_cli/       Typer + Rich command line over the library
-tests/                 pytest unit tests with coverage (80% minimum)
-tests/integration/     tests marked `integration`: skipped by default and in pre-commit, run in CI
-pyproject.toml         metadata, dev dependencies and tool configuration
-uv.lock                locked dependency set, checked by CI with --locked
+packages/core/src/example_package/   typed library: all the logic, never prints or exits
+packages/core/tests/                 core tests with coverage (80% minimum); tests/integration/ is marked `integration`
+packages/cli/src/example_cli/        Typer + Rich command line over the library
+packages/cli/tests/                  command line tests; tests/integration/ is marked `integration`
+packages/*/pyproject.toml            each package's metadata, dependencies and tool configuration
+pyproject.toml                       uv workspace root: dev dependencies and shared tool configuration
+uv.lock                              locked dependency set, checked by CI with --locked
 ```
 
-The version lives in one place, `__version__` in the package, and Hatchling reads it at build time. The release workflow compares it with the release tag.
+The repository is a uv workspace of two packages that are built, tested, versioned and released separately: `example-package` (`packages/core`) and `example-cli` (`packages/cli`, which depends on the core). Each version lives in one place, `__version__` in the package, and Hatchling reads it at build time. The release workflow compares it with the release tag.
 
 ## Library and CLI layers
 
@@ -50,16 +51,17 @@ flowchart LR
 
 - `example_cli` parses arguments with Typer, calls `example_package`, and writes all output through the shared Rich consoles: data to stdout, messages and errors to stderr.
 - `example_package` holds the logic. It raises exceptions instead of printing or exiting, so other front ends can reuse it.
-- The console script `example-cli` and `python -m example_cli` both enter through `example_cli.cli:app`. Both packages ship in one wheel and share the version in `example_package.__version__`.
+- The console script `example-cli` and `python -m example_cli` both enter through `example_cli.cli:app`. The two packages ship as separate wheels; `--version` reports `example_package.__version__`.
 
 ## Workflows
 
 | Workflow | Trigger | Purpose |
 | --- | --- | --- |
-| `ci.yml` | Pull request, push to `main` | Runs `lint`, `test`, `integration` and `build` in parallel. A final `ci` job gates on all four and is the only check the ruleset requires. |
+| `ci.yml` | Pull request, push to `main` | Calls `ci-core.yml`, `ci-cli.yml` (lint, test, integration test, build) and `ci-repo.yml` (everything outside `packages/`). `changes.yml` limits a pull request to the parts it touches. A final `ci` job gates on all of them and is the only check the ruleset requires. |
+| `security.yml` | Pull request, push to `main`, weekly, manual | Calls `security-core.yml`, `security-cli.yml` and `security-repo.yml`: Semgrep, uploaded to code scanning. Not a required check. |
 | `dependency-review.yml` | Pull request | Blocks pull requests that add vulnerable dependencies. |
-| `audit.yml` | Weekly, manual, and pull requests that change `uv.lock` | Runs `pip-audit` on the locked dependencies to catch newly published vulnerabilities. |
-| `release.yml` | GitHub release published | Checks the tag matches the version, builds, then publishes to PyPI. |
+| `audit.yml` | Weekly, manual, and pull requests that change `uv.lock` | Calls `audit-core.yml`, `audit-cli.yml` and `audit-repo.yml`: `pip-audit` on each package's locked dependencies to catch newly published vulnerabilities. |
+| `release.yml` | GitHub release published | Tag `vX.Y.Z` releases `example-package`, tag `cli-vX.Y.Z` releases `example-cli`: checks the tag matches the version, builds, then publishes to PyPI. |
 | `init.yml` | Manual | One-time placeholder replacement in a repo created from the template. Skipped in the template itself. |
 
 CodeQL runs through GitHub's default setup rather than a workflow file.
@@ -77,9 +79,9 @@ Repository admins can bypass through a pull request so a solo maintainer is not 
 
 ## Release flow
 
-1. Bump `__version__` and update `CHANGELOG.md` in a pull request.
-2. After merge, publish a GitHub release tagged `v<version>`.
-3. `release.yml` builds the sdist and wheel in one job, then a second job in the `pypi` environment publishes them using OpenID Connect. No API token is stored, and only the publish job gets the `id-token` permission.
+1. Bump `__version__` and update the package's `CHANGELOG.md` in a pull request.
+2. After merge, publish a GitHub release tagged `v<version>` (core) or `cli-v<version>` (command line). Release the core first, because the command line depends on it.
+3. `release.yml` builds the sdist and wheel in one job, then a second job in the package's environment (`core` or `cli`) publishes them using OpenID Connect. No API token is stored, and only the publish job gets the `id-token` permission.
 
 ## Template lifecycle
 

@@ -1,6 +1,17 @@
 name: Release
 
-# Publishes to PyPI when a GitHub release is published, using trusted publishing (no stored tokens).
+# Runs when a GitHub release is published. The tag decides what is released, and each part waits for
+# the approval of its own environment (Settings > Environments) before it publishes anything:
+#
+#   vX.Y.Z          core    the example-package package to PyPI          environment: core
+#   cli-vX.Y.Z      cli     the example-cli package to PyPI              environment: cli
+#
+# After a release is published, the update-latest action keeps the repository's Latest badge on the newest
+# core release (core owns it) and moves a <package>-latest tag and pre-release (core-latest, cli-latest)
+# to the new version, so every package has its own stable "latest". Pre-releases change nothing.
+#
+# The tag must match the version in the package's pyproject.toml. Release core before cli, because
+# example-cli depends on the example-package package on PyPI.
 on:
   release:
     types: [published]
@@ -8,35 +19,73 @@ on:
 permissions:
   contents: read
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3
-      - name: Check tag matches package version
-        env:
-          TAG: ${{ github.event.release.tag_name }}
-        run: |
-          version="$(uv version --short)"
-          [ "$TAG" = "v$version" ] || { echo "Tag $TAG does not match version $version"; exit 1; }
-      - run: uv build
-      - uses: actions/upload-artifact@v7
-        with:
-          name: dist
-          path: dist/
+concurrency:
+  group: release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
 
-  publish:
-    needs: build
+jobs:
+  core:
+    if: startsWith(github.event.release.tag_name, 'v')
+    uses: ./.github/workflows/release-core.yml
+    permissions:
+      contents: read
+
+  # Publishing is a job of this workflow, not of the called one: PyPI trusted publishing does not
+  # support reusable workflows (the token names the called workflow, not release.yml).
+  core-publish:
+    name: core publish (PyPI)
+    needs: core
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    environment: pypi
+    environment: core
     permissions:
-      id-token: write
+      contents: write # attach files to the release
+      id-token: write # PyPI trusted publishing
     steps:
-      - uses: actions/download-artifact@v8
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Download the distribution files
+        uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist/
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Attach the files to the release
+        uses: ./.github/actions/attach-release-files
+      - name: Update the latest markers
+        uses: ./.github/actions/update-latest
+        with:
+          package: core
+
+  cli:
+    if: startsWith(github.event.release.tag_name, 'cli-v')
+    uses: ./.github/workflows/release-cli.yml
+    permissions:
+      contents: read
+
+  cli-publish:
+    name: cli publish (PyPI, GitHub release)
+    needs: cli
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: cli
+    permissions:
+      contents: write # attach files to the release
+      id-token: write # PyPI trusted publishing
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Download the distribution files
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Attach the files to the release
+        uses: ./.github/actions/attach-release-files
+      - name: Update the latest markers
+        uses: ./.github/actions/update-latest
+        with:
+          package: cli

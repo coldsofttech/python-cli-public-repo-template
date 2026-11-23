@@ -1,0 +1,23 @@
+name: Attach files to the release
+description: Download every artifact of this run, write SHA-256 checksums and attach the files to the GitHub release. The job needs contents write permission and a checkout.
+
+runs:
+  using: composite
+  steps:
+    - name: Download the files
+      uses: actions/download-artifact@v8
+      with:
+        path: release/
+        merge-multiple: true
+    - name: Write SHA-256 checksums
+      shell: bash
+      working-directory: release
+      run: |
+        sha256sum -- * > SHA256SUMS.txt
+        cat SHA256SUMS.txt
+    - name: Attach the files to the release
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        TAG: ${{ github.event.release.tag_name }}
+      run: gh release upload "$TAG" release/* --clobber --repo "$GITHUB_REPOSITORY"

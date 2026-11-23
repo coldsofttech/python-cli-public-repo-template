@@ -1,0 +1,22 @@
+name: Audit repo
+
+# Dependencies declared at the workspace root (dev tools) that no package audit
+# covers. Called by audit.yml.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  repo-audit:
+    name: repo audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Audit
+        uses: ./.github/actions/audit-python
+        with:
+          extra-args: --all-groups

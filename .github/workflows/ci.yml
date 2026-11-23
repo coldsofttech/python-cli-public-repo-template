@@ -1,5 +1,9 @@
 name: CI
 
+# Calls one workflow per package (ci-core, ci-cli) and one for the rest of the repository
+# (ci-repo); `ci` at the end is the single required check for the branch ruleset. On pull
+# requests, `changes` limits the run to the parts of the repository the change can affect; every
+# other event runs everything.
 on:
   pull_request:
   push:
@@ -13,90 +17,37 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3
-      - run: uv sync --locked
-      - name: Check the generated CLI reference is up to date
-        run: |
-          uv run typer example_cli.cli utils docs --name example-cli --output docs/cli-reference.md
-          git diff --exit-code docs/cli-reference.md
-      - uses: pre-commit/action@v3.0.1
-        env:
-          SKIP: pytest # covered by the test job across all Python versions
+  changes:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/changes.yml
 
-  test:
-    name: test (${{ matrix.os }}, ${{ matrix.python-version }})
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
-        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
-        include:
-          - os: windows-latest
-            python-version: "3.11"
-          - os: macos-latest
-            python-version: "3.11"
-    steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3
-        with:
-          python-version: ${{ matrix.python-version }}
-      - run: uv sync --locked
-      - run: uv run pytest
+  core:
+    needs: changes
+    if: needs.changes.outputs.core == 'true'
+    uses: ./.github/workflows/ci-core.yml
 
-  integration:
-    name: integration (${{ matrix.os }}, ${{ matrix.python-version }})
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
-        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
-        include:
-          - os: windows-latest
-            python-version: "3.11"
-          - os: macos-latest
-            python-version: "3.11"
-    steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3
-        with:
-          python-version: ${{ matrix.python-version }}
-      - run: uv sync --locked
-      - run: uv run pytest -m integration --no-cov
+  cli:
+    needs: changes
+    if: needs.changes.outputs.cli == 'true'
+    uses: ./.github/workflows/ci-cli.yml
 
-  build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3
-      - run: uv build
-      - run: uvx twine check --strict dist/*
-      - name: Smoke test the built wheel
-        run: uvx --from dist/*.whl example-cli --version
+  repo:
+    needs: changes
+    if: needs.changes.outputs.repo == 'true'
+    uses: ./.github/workflows/ci-repo.yml
 
-  # Single required status check for the branch ruleset.
   ci:
     if: always()
-    needs: [lint, test, integration, build]
+    needs: [changes, core, cli, repo]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Check results
+        env:
+          NEEDS: ${{ toJSON(needs) }}
         run: |
-          echo "lint:        ${{ needs.lint.result }}"
-          echo "test:        ${{ needs.test.result }}"
-          echo "integration: ${{ needs.integration.result }}"
-          echo "build:       ${{ needs.build.result }}"
-          [ "${{ needs.lint.result }}" = success ] &&
-          [ "${{ needs.test.result }}" = success ] &&
-          [ "${{ needs.integration.result }}" = success ] &&
-          [ "${{ needs.build.result }}" = success ]
+          jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<< "$NEEDS"
+          # A job skipped because its part of the repository did not change counts as passed.
+          jq -e 'all(.[]; .result == "success" or .result == "skipped")' <<< "$NEEDS" > /dev/null

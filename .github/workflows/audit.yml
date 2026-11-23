@@ -2,6 +2,8 @@ name: Audit
 
 # Checks locked dependencies for known vulnerabilities. Dependency review only covers
 # pull requests, so this catches advisories published against dependencies already in use.
+# Calls one workflow per package (audit-core, audit-cli) and one for the workspace root
+# (audit-repo).
 on:
   schedule:
     - cron: "0 6 * * 1"
@@ -13,13 +15,11 @@ permissions:
   contents: read
 
 jobs:
-  pip-audit:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3
-      - name: Export locked dependencies
-        run: uv export --locked --no-emit-project --no-hashes --format requirements-txt -o requirements-audit.txt
-      - name: Audit
-        run: uvx pip-audit --requirement requirements-audit.txt --no-deps --disable-pip
+  core:
+    uses: ./.github/workflows/audit-core.yml
+
+  cli:
+    uses: ./.github/workflows/audit-cli.yml
+
+  repo:
+    uses: ./.github/workflows/audit-repo.yml

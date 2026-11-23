@@ -18,7 +18,7 @@ A ready-to-use starting point for public Python command line tools on GitHub. It
 - Fast, reproducible setup with [uv](https://docs.astral.sh/uv/)
 - Linting, formatting and type checking before every commit and in CI
 - Automated tests on Python 3.11 to 3.15 (Ubuntu) and 3.11 (Windows and macOS)
-- Publishing to PyPI when you create a GitHub release, with no stored tokens
+- Library and command line in separate packages, each published to PyPI when you create a GitHub release, with no stored tokens
 - Contribution, conduct, support and security-reporting guidelines
 - Issue forms, a pull request template and automated dependency updates
 

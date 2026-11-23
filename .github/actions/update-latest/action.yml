@@ -1,0 +1,72 @@
+name: Update the latest release markers
+description: >-
+  After a package is released, (1) keep the repository's "Latest" badge on the newest core release
+  and (2) move the package's own `<package>-latest` tag and pre-release to the new version, so each
+  package has a stable "latest" even though GitHub only allows one Latest per repository. Pre-releases
+  change nothing. The job needs contents write permission; no checkout is needed beyond the one
+  that makes this local action available.
+
+inputs:
+  package:
+    description: Which package was released (core or cli).
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Keep the Latest badge on the newest core release
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        PRERELEASE: ${{ github.event.release.prerelease }}
+      run: |
+        [ "$PRERELEASE" = "true" ] && { echo "Pre-release: nothing to update."; exit 0; }
+        # Core owns the badge. Tags are vX.Y.Z; the cli package uses a prefix (cli-v)
+        # and the pointers use <package>-latest, so only core tags match ^v[0-9].
+        core="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 200 --exclude-drafts --exclude-pre-releases \
+          --json tagName --jq '.[].tagName' | grep -E '^v[0-9]' | sort -V | tail -n 1 || true)"
+        [ -n "$core" ] || { echo "No core release yet: nothing to mark as Latest."; exit 0; }
+        # Publishing a release makes it Latest by date, so set the badge explicitly after every release.
+        gh release edit "$core" --latest --repo "$GITHUB_REPOSITORY"
+        echo "Latest badge: $core"
+    - name: Move the package's latest pointer
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        PRERELEASE: ${{ github.event.release.prerelease }}
+        TAG: ${{ github.event.release.tag_name }}
+        PACKAGE: ${{ inputs.package }}
+      run: |
+        [ "$PRERELEASE" = "true" ] && exit 0
+        pointer="${PACKAGE}-latest"
+        repo="$GITHUB_REPOSITORY"
+        sha="$(gh api "repos/$repo/commits/$TAG" --jq .sha)"
+
+        # Create or move the tag (forced, so it always follows the newest release).
+        if gh api "repos/$repo/git/ref/tags/$pointer" >/dev/null 2>&1; then
+          gh api -X PATCH "repos/$repo/git/refs/tags/$pointer" -f sha="$sha" -F force=true >/dev/null
+        else
+          gh api -X POST "repos/$repo/git/refs" -f ref="refs/tags/$pointer" -f sha="$sha" >/dev/null
+        fi
+
+        notes="Always the newest ${PACKAGE} release, currently [\`${TAG}\`](https://github.com/${repo}/releases/tag/${TAG}). This entry is updated automatically and is not a separate version."
+        if gh release view "$pointer" --repo "$repo" >/dev/null 2>&1; then
+          gh release edit "$pointer" --repo "$repo" --title "$PACKAGE (latest)" --notes "$notes" \
+            --prerelease --latest=false
+        else
+          # A pre-release, so it never takes the Latest badge. Releases made with the workflow token do
+          # not start release.yml, and the pointer names match none of its tag prefixes anyway.
+          gh release create "$pointer" --repo "$repo" --verify-tag --title "$PACKAGE (latest)" \
+            --notes "$notes" --prerelease --latest=false
+        fi
+
+        # Replace the files with those of the new release (file names carry the version).
+        gh release view "$pointer" --repo "$repo" --json assets --jq '.assets[].name' | while read -r name; do
+          [ -n "$name" ] && gh release delete-asset "$pointer" "$name" --repo "$repo" --yes
+        done
+        mkdir -p "$RUNNER_TEMP/pointer"
+        if gh release download "$TAG" --repo "$repo" --dir "$RUNNER_TEMP/pointer" 2>/dev/null \
+          && [ -n "$(ls -A "$RUNNER_TEMP/pointer")" ]; then
+          gh release upload "$pointer" "$RUNNER_TEMP/pointer"/* --repo "$repo" --clobber
+        fi
+        echo "Pointer $pointer -> $TAG"

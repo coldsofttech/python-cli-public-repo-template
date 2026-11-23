@@ -1,0 +1,32 @@
+name: Lint a Python package
+description: Ruff, mypy and pre-commit for one package. Run after checkout and setup-uv.
+
+inputs:
+  path:
+    description: Package folder, for example packages/core.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Ruff check
+      shell: bash
+      env:
+        LINT_PATH: ${{ inputs.path }}
+      run: uv run ruff check "$LINT_PATH"
+    - name: Ruff format
+      shell: bash
+      env:
+        LINT_PATH: ${{ inputs.path }}
+      run: uv run ruff format --check "$LINT_PATH"
+    - name: Mypy
+      shell: bash
+      env:
+        LINT_PATH: ${{ inputs.path }}
+      run: uv run mypy "$LINT_PATH/src"
+    - name: Run pre-commit hooks
+      shell: bash
+      env:
+        SKIP: pytest-core,pytest-cli # covered by the test jobs across all Python versions
+        LINT_PATH: ${{ inputs.path }}
+      run: uvx pre-commit run --files $(git ls-files "$LINT_PATH")

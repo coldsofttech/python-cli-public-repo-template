@@ -1,0 +1,27 @@
+name: Set up uv
+description: Install uv and, unless told not to, the locked dependencies. Run after checkout.
+
+inputs:
+  python-version:
+    description: Python version for uv; empty uses the project default.
+    default: ""
+  sync:
+    description: Run `uv sync` ("true" or "false").
+    default: "true"
+  sync-args:
+    description: Arguments for `uv sync`.
+    default: "--locked"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v10.3.3
+      with:
+        python-version: ${{ inputs.python-version }}
+    - name: Install dependencies
+      if: inputs.sync == 'true'
+      shell: bash
+      env:
+        SYNC_ARGS: ${{ inputs.sync-args }}
+      run: uv sync $SYNC_ARGS

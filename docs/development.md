@@ -3,19 +3,20 @@
 ## Layout
 
 ```text
-src/example_package/   library: all the logic, never prints or exits (typed)
-src/example_cli/       Typer + Rich command line: parses input, calls the library, shows output
-tests/                 pytest tests
-pyproject.toml         metadata, dependencies and tool configuration
-uv.lock                locked dependencies (commit this file)
+packages/core/src/example_package/   library: all the logic, never prints or exits (typed)
+packages/cli/src/example_cli/        Typer + Rich command line: parses input, calls the library, shows output
+packages/*/tests/                    pytest tests (unit/ and integration/) of each package
+packages/*/pyproject.toml            each package's metadata, dependencies and tool configuration
+pyproject.toml                       uv workspace root: dev dependencies and shared tool configuration
+uv.lock                              locked dependencies (commit this file)
 ```
 
 The example names are `example_package` (library), `example_cli` (command line package) and `example-cli` (the command). After creating a repo from this template:
 
-1. Rename `src/example_package/` and `src/example_cli/` to your import names, and update the imports in `src/` and `tests/`.
-2. In `pyproject.toml`, update `[tool.hatch.version]`, `[tool.hatch.build.targets.wheel]`, the `--cov=` options, and the command in `[project.scripts]`.
-3. Update the command name, the `EXAMPLE_CLI_` environment variable prefix and the help text in `src/example_cli/cli.py`, then in `docs/cli.md` and `README.md`, and regenerate `docs/cli-reference.md` (see [CLI reference](cli.md)).
-4. Set the description in `pyproject.toml`, then run `uv lock`.
+1. Rename `packages/core/src/example_package/` and `packages/cli/src/example_cli/` to your import names, and update the imports in both packages' `src/` and `tests/`.
+2. Rename the distributions `example-package` and `example-cli` everywhere they appear (the root and both `pyproject.toml` files, `.github/actions/run-pytest`, `audit-*`, `release-*` and `ci-*` workflows), and in each package's `pyproject.toml` update `[tool.hatch.version]`, `[tool.hatch.build.targets.wheel]`, the `--cov=` options, `known-first-party` and the command in `[project.scripts]`.
+3. Update the command name, the `EXAMPLE_CLI_` environment variable prefix and the help text in `packages/cli/src/example_cli/cli.py`, then in `docs/cli.md` and `README.md`, and regenerate `docs/cli-reference.md` (see [CLI reference](cli.md)).
+4. Set the descriptions in both packages' `pyproject.toml`, then run `uv lock`.
 
 Commands, options and exit codes are documented in [CLI reference](cli.md).
 
@@ -29,28 +30,28 @@ Commands, options and exit codes are documented in [CLI reference](cli.md).
 | Tests and coverage | pytest with pytest-cov (80% minimum) |
 
 ```bash
-uv sync                    # create .venv and install dev dependencies
-uv run pytest              # unit tests with coverage (skips integration tests)
-uv run pytest -m integration --no-cov   # integration tests only
+uv sync                    # create .venv and install dev dependencies of the whole workspace
+uv run pytest packages/core/tests      # unit tests of one package with coverage (skips integration tests)
+uv run pytest -m integration packages/cli/tests --no-cov   # integration tests of one package
 uv run ruff check .        # lint
 uv run ruff format .       # format
 uv run mypy                # type check
-uv build                   # build sdist and wheel
+uv build --package example-cli   # build the sdist and wheel of one package
 ```
 
 ## Integration tests
 
-Tests under `tests/integration/` are marked `integration` automatically by that folder's `conftest.py`. They are excluded from the default `pytest` run, and therefore from the pre-commit hook, and run as their own job in CI. Put slower or end-to-end tests there.
+Tests under each package's `tests/integration/` are marked `integration` automatically by that folder's `conftest.py`. They are excluded from the default `pytest` run, and therefore from the pre-commit hook, and run as their own job in CI. Put slower or end-to-end tests there.
 
 ## Continuous integration
 
-The `ci` workflow runs four jobs: `lint` (pre-commit, including Ruff and mypy), `test` (unit tests), `integration` (tests marked `integration`) and `build` (build and `twine check`). The `test` and `integration` jobs run on Python 3.11 to 3.15 on Ubuntu, and on 3.11 on Windows and macOS. A final `ci` job gates on all four and is the single required check in the branch ruleset.
+The `ci` workflow calls one workflow per package (`ci-core`, `ci-cli`) and one for the rest of the repository (`ci-repo`). Each package runs `lint` (Ruff, mypy and pre-commit), `test` (unit tests), `int-test` (tests marked `integration`) and `build` (build and `twine check`). The test jobs run on Python 3.11 to 3.15 on Ubuntu, and on 3.11 on Windows and macOS. On pull requests, `changes` skips the parts a change cannot affect. A final `ci` job gates on all of them and is the single required check in the branch ruleset. Shared steps live in `.github/actions/` (`setup-uv`, `lint-python`, `run-pytest`, `audit-python`, `semgrep`, `check-release-tag`, `attach-release-files`, `update-latest`). The `audit` and `security` workflows follow the same per-package split.
 
 ## Releasing to PyPI
 
 Publishing uses [trusted publishing](https://docs.pypi.org/trusted-publishers/), so no API token is stored.
 
-1. On PyPI, add a trusted publisher for this repository: workflow `release.yml`, environment `pypi`.
-2. Create an environment named `pypi`. The settings script does this and restricts it to `v*` tags.
-3. Bump `__version__` in `src/<package>/__init__.py` and update `CHANGELOG.md`.
-4. Publish a GitHub release tagged `v<version>`. The workflow fails if the tag and version differ.
+1. On PyPI, add a trusted publisher for each project: workflow `release.yml`, environment `core` for `example-package` and `cli` for `example-cli`.
+2. Create the environments `core` and `cli`. The settings script does this and restricts them to `v*` and `cli-v*` tags.
+3. Bump `__version__` in `packages/<package>/src/<name>/__init__.py` and update that package's `CHANGELOG.md`.
+4. Publish a GitHub release tagged `v<version>` for the core, then `cli-v<version>` for the command line (it depends on the core on PyPI). The workflow fails if the tag and version differ.

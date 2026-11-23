@@ -1,0 +1,95 @@
+name: CI core
+
+# packages/core: lint, tests, integration tests and build. Called by ci.yml.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  core-lint:
+    name: core lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Set up uv
+        uses: ./.github/actions/setup-uv
+      - name: Lint
+        uses: ./.github/actions/lint-python
+        with:
+          path: packages/core
+      - name: Check dependency licenses
+        run: uv run pip-licenses --from=mixed --partial-match --fail-on="GPL" --format=plain
+
+  core-test:
+    name: core test (${{ matrix.os }}, ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
+        include:
+          - os: windows-latest
+            python-version: "3.11"
+          - os: macos-latest # Apple silicon
+            python-version: "3.11"
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Run tests
+        uses: ./.github/actions/run-pytest
+        with:
+          package: core
+          python-version: ${{ matrix.python-version }}
+
+  core-int-test:
+    name: core int-test (${{ matrix.os }}, ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
+        include:
+          - os: windows-latest
+            python-version: "3.11"
+          - os: macos-latest # Apple silicon
+            python-version: "3.11"
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Run integration tests
+        uses: ./.github/actions/run-pytest
+        with:
+          package: core
+          python-version: ${{ matrix.python-version }}
+          integration: "true"
+
+  core-build:
+    name: core build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Set up uv
+        uses: ./.github/actions/setup-uv
+        with:
+          sync: "false"
+      - name: Build the package
+        run: uv build --package example-package
+      - name: Check the package metadata
+        run: uvx twine check --strict dist/*
+      - name: Check the package holds the core library only
+        run: |
+          unzip -l dist/*.whl > wheel.txt
+          grep -q " example_package/" wheel.txt
+          if grep -E " example_cli/" wheel.txt; then
+            echo "the core wheel must not contain the command line"; exit 1
+          fi

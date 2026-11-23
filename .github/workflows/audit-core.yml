@@ -1,0 +1,21 @@
+name: Audit core
+
+# packages/core: known vulnerabilities in the locked dependencies. Called by audit.yml.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  core-audit:
+    name: core audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Audit
+        uses: ./.github/actions/audit-python
+        with:
+          package: example-package

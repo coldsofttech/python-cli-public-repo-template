@@ -1,0 +1,81 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "example-cli"
+dynamic = ["version"]
+description = "Python command line tool description."
+keywords = ["cli"]
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "coldsofttech" }]
+classifiers = [
+  "Environment :: Console",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
+  "Topic :: Utilities",
+  "Typing :: Typed",
+]
+dependencies = [
+  "example-package",
+  "rich>=13.9",
+  "typer>=0.15",
+]
+
+[project.scripts]
+example-cli = "example_cli.cli:run"
+
+[project.urls]
+Homepage = "https://github.com/coldsofttech/python-cli-public-repo-template"
+Issues = "https://github.com/coldsofttech/python-cli-public-repo-template/issues"
+Changelog = "https://github.com/coldsofttech/python-cli-public-repo-template/blob/main/packages/cli/CHANGELOG.md"
+
+[tool.hatch.version]
+path = "src/example_cli/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/example_cli"]
+
+[dependency-groups]
+dev = [
+  "mypy>=1.13",
+  "pytest>=8.3",
+  "pytest-cov>=6.0",
+  "pytest-xdist>=3.6",
+  "ruff>=0.8",
+]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["B", "C4", "E", "F", "I", "PT", "RUF", "S", "SIM", "T20", "UP", "W"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["example_package", "example_cli"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S603"]  # assert and subprocess are fine in tests
+
+[tool.mypy]
+strict = true
+explicit_package_bases = true
+mypy_path = "src"
+files = ["src", "tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not integration' --strict-markers --cov=example_cli --cov-report=term-missing --cov-fail-under=80"
+markers = ["integration: slower end-to-end tests, run in CI but not by default or in pre-commit"]
+
+[tool.coverage.run]
+branch = true

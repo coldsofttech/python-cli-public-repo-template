@@ -1,0 +1,101 @@
+name: CI CLI
+
+# packages/cli: lint, tests, integration tests and build. Called by ci.yml.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  cli-lint:
+    name: cli lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Set up uv
+        uses: ./.github/actions/setup-uv
+      - name: Lint
+        uses: ./.github/actions/lint-python
+        with:
+          path: packages/cli
+      - name: Check the generated CLI reference is up to date
+        run: |
+          uv run typer example_cli.cli utils docs --name example-cli --output docs/cli-reference.md
+          git diff --exit-code docs/cli-reference.md
+
+  cli-test:
+    name: cli test (${{ matrix.os }}, ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
+        include:
+          - os: windows-latest
+            python-version: "3.11"
+          - os: macos-latest # Apple silicon
+            python-version: "3.11"
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Run tests
+        uses: ./.github/actions/run-pytest
+        with:
+          package: cli
+          python-version: ${{ matrix.python-version }}
+
+  cli-int-test:
+    name: cli int-test (${{ matrix.os }}, ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
+        include:
+          - os: windows-latest
+            python-version: "3.11"
+          - os: macos-latest # Apple silicon
+            python-version: "3.11"
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Run integration tests
+        uses: ./.github/actions/run-pytest
+        with:
+          package: cli
+          python-version: ${{ matrix.python-version }}
+          integration: "true"
+
+  cli-build:
+    name: cli build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Set up uv
+        uses: ./.github/actions/setup-uv
+        with:
+          sync: "false"
+      - name: Build the packages
+        run: |
+          uv build --package example-package
+          uv build --package example-cli
+      - name: Check the package metadata
+        run: uvx twine check --strict dist/*
+      - name: Check the CLI package holds the command line only
+        run: |
+          unzip -l dist/example_cli-*.whl > wheel.txt
+          grep -q " example_cli/" wheel.txt
+          if grep -E " example_package/" wheel.txt; then
+            echo "the CLI wheel must not contain the core library"; exit 1
+          fi
+      - name: Smoke test the built wheel
+        run: uvx --find-links dist --from dist/example_cli-*.whl example-cli --version
