@@ -16,7 +16,7 @@ pyproject.toml                       uv workspace root: dev dependencies and sha
 uv.lock                              locked dependencies (commit this file)
 ```
 
-The example names are `example_package` (library), `example_cli` (command line package) and `example-cli` (the command). After creating a repo from this template:
+The example names are `example_package` (library), `example_cli` (command line package) and `example-cli` (the command). After creating a repo from this template, run the **Init** workflow: it replaces the template owner and name and deletes `TEMPLATE_CHANGELOG.md`, which records the template's own changes and is not meant for your repository (your history belongs in `CHANGELOG.md`). Then:
 
 1. Rename `packages/core/src/example_package/` and `packages/cli/src/example_cli/` to your import names, and update the imports in both packages' `src/` and `tests/`.
 2. Rename the distributions `example-package` and `example-cli` everywhere they appear (the root and both `pyproject.toml` files, `.github/actions/run-pytest`, `audit-*`, `release-*` and `ci-*` workflows), and in each package's `pyproject.toml` update `[tool.hatch.version]`, `[tool.hatch.build.targets.wheel]`, the `--cov=` options, `known-first-party` and the command in `[project.scripts]`.

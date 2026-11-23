@@ -25,6 +25,7 @@ jobs:
         run: |
           git ls-files -z -- . \
             ':(exclude).github/workflows' ':(exclude)LICENSE' ':(exclude).pre-commit-config.yaml' \
+            ':(exclude)TEMPLATE_CHANGELOG.md' \
             | xargs -0 grep -lZ -e coldsofttech -e public-repo-template \
             | xargs -0 -r sed -i \
                 -e "s|coldsofttech/python-cli-public-repo-template|$REPO|g" \
@@ -39,6 +40,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c chore/init-template
+          # The template's own history is not meant for the new repository.
+          git rm --quiet --ignore-unmatch TEMPLATE_CHANGELOG.md
           git add -A
           if git diff --cached --quiet; then
             echo "Nothing to change"
