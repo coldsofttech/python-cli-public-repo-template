@@ -11,6 +11,6 @@ All notable changes to the Docker image are documented here. The format follows 
 
 ### Security
 
-- The image runs as an unprivileged user and holds no compilers or pip, which keeps what can be attacked small.
+- The image runs as an unprivileged user and holds no compilers, and the application's virtual environment has no pip, which keeps what can be attacked small.
 - The Dockerfile is checked on every change, and the built image is scanned for known vulnerabilities every week.
 - Published images carry build provenance.

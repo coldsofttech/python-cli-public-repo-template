@@ -26,13 +26,7 @@ These go before the command name, for example `example-cli --quiet hello`.
 
 Boolean environment variables accept `1`, `true` and `yes`. A flag on the command line wins over the variable.
 
-The full, generated list of commands and options is in [cli-reference.md](../cli-reference.md). Regenerate it after changing a command:
-
-```bash
-uv run typer example_cli.cli utils docs --name example-cli --output packages/cli/docs/cli-reference.md
-```
-
-CI fails if the file is out of date.
+Every command also documents itself: run `example-cli --help` or `example-cli <command> --help`.
 
 ## Commands
 
@@ -73,4 +67,4 @@ Expected failures print `Error: <message>` to stderr and exit with code 1. Unexp
 1. Add the logic to `example_package` as a plain function that returns a value or raises an exception. It must not print or exit.
 2. Add a command to `src/example_cli/cli.py` that calls it, writes through the consoles in `output.py`, and raises `typer.Exit(code=1)` on failure.
 3. Add a `--json` option if the command returns data.
-4. Add tests with `typer.testing.CliRunner`, document the command in this folder (one file per command under `cli/`, linked from this page), and regenerate `cli-reference.md`.
+4. Add tests with `typer.testing.CliRunner`, document the command in this folder (one file per command under `cli/`, linked from this page).

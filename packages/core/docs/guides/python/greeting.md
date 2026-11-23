@@ -5,8 +5,8 @@
 ```python
 from example_package import greet
 
-greet("Ada")        # 'Hello, Ada!'
-greet("  Ada  ")    # 'Hello, Ada!'  (surrounding whitespace is removed)
+greet("Ada")  # 'Hello, Ada!'
+greet("  Ada  ")  # 'Hello, Ada!'  (surrounding whitespace is removed)
 ```
 
 ## Signature
@@ -31,7 +31,7 @@ Returns the text `Hello, <name>!`.
 try:
     greet(" ")
 except ValueError as error:
-    print(error)    # name must not be empty
+    print(error)  # name must not be empty
 ```
 
 ## Used by

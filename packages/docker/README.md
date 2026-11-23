@@ -18,7 +18,7 @@ It is the same `example-cli` command as the Python package, so everything after 
 | --- | --- |
 | `/output` | The working directory. Mount a folder to keep files the command writes. |
 
-The image runs as a normal user (uid `10001`), supports `linux/amd64` and `linux/arm64`, and carries no compilers or pip.
+The image runs as a normal user (uid `10001`), supports `linux/amd64` and `linux/arm64`, and carries no compilers or pip in its application environment.
 
 ## Learn more
 

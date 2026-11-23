@@ -18,4 +18,4 @@ The workflow then moves the `docker-latest` tag and pre-release to the new versi
 - **User.** A fixed system user and group `example` (uid and gid `10001`) with no home folder and no login shell, so files written to a mounted folder have a predictable owner.
 - **Entry point.** `ENTRYPOINT ["example-cli"]` with `CMD ["--help"]`.
 - **Labels.** The OCI labels (title, description, source, license and `VERSION`) are set so registries show the right details.
-- **Build.** Two stages: the first installs both packages into a virtual environment, the second copies only that environment onto the same base, with no pip and no sources.
+- **Build.** Two stages: the first installs both packages into a virtual environment, the second copies only that environment onto the same base, with no pip in the environment and no sources.

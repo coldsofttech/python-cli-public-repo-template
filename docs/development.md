@@ -20,7 +20,7 @@ The example names are `example_package` (library), `example_cli` (command line p
 
 1. Rename `packages/core/src/example_package/` and `packages/cli/src/example_cli/` to your import names, and update the imports in both packages' `src/` and `tests/`.
 2. Rename the distributions `example-package` and `example-cli` everywhere they appear (the root and both `pyproject.toml` files, `.github/actions/run-pytest`, `audit-*`, `release-*` and `ci-*` workflows), and in each package's `pyproject.toml` update `[tool.hatch.version]`, `[tool.hatch.build.targets.wheel]`, the `--cov=` options, `known-first-party` and the command in `[project.scripts]`.
-3. Update the command name, the `EXAMPLE_CLI_` environment variable prefix and the help text in `packages/cli/src/example_cli/cli.py`, then in `packages/cli/docs/guides/cli.md` and `README.md`, and regenerate `packages/cli/docs/cli-reference.md` (see the [command line guide](../packages/cli/docs/guides/cli.md)).
+3. Update the command name, the `EXAMPLE_CLI_` environment variable prefix and the help text in `packages/cli/src/example_cli/cli.py`, then in `packages/cli/docs/guides/cli.md` and `README.md` (see the [command line guide](../packages/cli/docs/guides/cli.md)).
 4. Set the descriptions in both packages' `pyproject.toml`, then run `uv lock`.
 
 Commands, options and exit codes are documented in the [command line guide](../packages/cli/docs/guides/cli.md).

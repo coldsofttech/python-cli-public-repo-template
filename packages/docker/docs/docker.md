@@ -46,6 +46,6 @@ docker build -f packages/docker/Dockerfile --build-arg PYTHON_VERSION=3.12 -t ex
 
 ## Publishing
 
-The [CI Docker workflow](../../../.github/workflows/ci-docker.yml) builds the image and checks it on every change to the image or the packages: it starts, it is not root, its folder is writable, and a failure is a short message with exit code 1. Nothing is published.
+The [CI Docker workflow](../../../.github/workflows/ci-docker.yml) builds the image and checks it on every change to the image or the packages: it starts, it is not root, its folder is writable, and a failure is a short message with exit code 1. The checks are pytest tests in `packages/docker/tests`; run them locally with `uv run --with pytest pytest -c packages/docker/pytest.ini packages/docker/tests` (they build the image, or test one named in `EXAMPLE_CLI_IMAGE`, and skip when Docker is not available). Nothing is published.
 
 To publish, create a GitHub release tagged `docker-v<version>`. See [packaging](packaging.md).

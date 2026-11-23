@@ -13,7 +13,7 @@ Requires Python 3.11 or newer. The package is fully typed.
 ```python
 from example_package import __version__, greet
 
-print(greet("Ada"))   # Hello, Ada!
+print(greet("Ada"))  # Hello, Ada!
 print(__version__)
 ```
 

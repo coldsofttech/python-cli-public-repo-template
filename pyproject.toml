@@ -31,6 +31,7 @@ src = [
   "packages/cli/src",
   "packages/core/tests",
   "packages/cli/tests",
+  "packages/docker/tests",
 ]
 target-version = "py311"
 
@@ -43,13 +44,19 @@ known-first-party = ["example_package", "example_cli"]
 [tool.ruff.lint.per-file-ignores]
 "packages/*/tests/**" = ["S101", "S603"]  # assert and subprocess are fine in tests
 "scripts/**" = ["S603", "S607", "T201"]  # scripts call the trusted gh CLI and print progress
-"installer/scripts/**" = ["S603", "S607", "T201"]  # the build runs trusted tools and prints progress
+"installer/scripts/**" = ["S603", "S607", "T201"]  # scripts call trusted tools and print progress
 
 [tool.mypy]
 strict = true
 explicit_package_bases = true
 mypy_path = "packages/core/src:packages/cli/src"
 files = ["packages/core/src", "packages/cli/src"]
+
+[tool.pyright]
+extraPaths = [
+  "packages/core/src",
+  "packages/cli/src",
+]
 
 [tool.pytest.ini_options]
 addopts = "-m 'not integration' --strict-markers --cov=example_package --cov=example_cli --cov-report=term-missing --cov-fail-under=80"

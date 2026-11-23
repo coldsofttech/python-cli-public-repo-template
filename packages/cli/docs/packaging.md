@@ -26,7 +26,7 @@ One-time set-up:
 Each release:
 
 1. Release the core first if it changed, because the wheel depends on `example-package` on PyPI.
-2. Bump `__version__`, regenerate the [reference](cli-reference.md) if commands changed, and move `[Unreleased]` entries of `CHANGELOG.md` under a version heading, in a pull request.
+2. Bump `__version__`, update the [guide](guides/cli.md) if commands changed, and move `[Unreleased]` entries of `CHANGELOG.md` under a version heading, in a pull request.
 3. Publish a GitHub release tagged `cli-v<version>` (for `0.2.0`, `cli-v0.2.0`).
 4. `release.yml` checks the tag, builds, and publishes after the `cli` environment is approved. The files are attached with `SHA256SUMS.txt`, and `cli-latest` moves to the new version.
 
