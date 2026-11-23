@@ -1,6 +1,8 @@
 name: Release
 
 # Publishes to PyPI when a GitHub release is published, using trusted publishing (no stored tokens).
+# If the repo has a setup.py (added by the Init workflow's pyd_support option), it builds compiled
+# platform wheels with cibuildwheel and publishes no sdist, so no .py sources are uploaded.
 on:
   release:
     types: [published]
@@ -9,7 +11,20 @@ permissions:
   contents: read
 
 jobs:
+  detect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      compiled: ${{ steps.flag.outputs.compiled }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: flag
+        run: |
+          if [ -f setup.py ]; then echo "compiled=true" >> "$GITHUB_OUTPUT"; else echo "compiled=false" >> "$GITHUB_OUTPUT"; fi
+
   build:
+    needs: detect
+    if: needs.detect.outputs.compiled != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -27,8 +42,37 @@ jobs:
           name: dist
           path: dist/
 
+  build-compiled:
+    name: build-compiled (${{ matrix.os }})
+    needs: detect
+    if: needs.detect.outputs.compiled == 'true'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-15-intel, macos-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3
+      - name: Check tag matches package version
+        shell: bash
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version="$(uv version --short)"
+          [ "$TAG" = "v$version" ] || { echo "Tag $TAG does not match version $version"; exit 1; }
+      - uses: pypa/cibuildwheel@v4.3.5
+        with:
+          output-dir: dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist-${{ matrix.os }}
+          path: dist/*.whl
+
   publish:
-    needs: build
+    needs: [build, build-compiled]
+    if: ${{ !cancelled() && !failure() }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: pypi
@@ -37,6 +81,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
-          name: dist
+          pattern: dist*
+          merge-multiple: true
           path: dist/
       - uses: pypa/gh-action-pypi-publish@release/v1
