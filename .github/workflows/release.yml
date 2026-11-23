@@ -21,6 +21,23 @@ jobs:
       - id: flag
         run: |
           if [ -f setup.py ]; then echo "compiled=true" >> "$GITHUB_OUTPUT"; else echo "compiled=false" >> "$GITHUB_OUTPUT"; fi
+      - name: Check tag matches package version (compiled builds)
+        if: steps.flag.outputs.compiled == 'true'
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          # uv cannot read a setuptools dynamic version, so read __version__ from the package.
+          version="$(python3 - <<'PY'
+          import re
+          import tomllib
+          from pathlib import Path
+
+          attr = tomllib.loads(Path("pyproject.toml").read_text())["tool"]["setuptools"]["dynamic"]["version"]["attr"]
+          source = Path("src", *attr.split(".")[:-1], "__init__.py").read_text()
+          print(re.search(r'^__version__\s*=\s*"([^"]+)"', source, re.M).group(1))
+          PY
+          )"
+          [ "$TAG" = "v$version" ] || { echo "Tag $TAG does not match version $version"; exit 1; }
 
   build:
     needs: detect
@@ -54,14 +71,6 @@ jobs:
         os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-15-intel, macos-latest]
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3
-      - name: Check tag matches package version
-        shell: bash
-        env:
-          TAG: ${{ github.event.release.tag_name }}
-        run: |
-          version="$(uv version --short)"
-          [ "$TAG" = "v$version" ] || { echo "Tag $TAG does not match version $version"; exit 1; }
       - uses: pypa/cibuildwheel@v4.3.5
         with:
           output-dir: dist
